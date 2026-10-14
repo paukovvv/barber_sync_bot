@@ -1,0 +1,12 @@
+# Build output
+target/
+
+# IDE settings
+.idea/
+*.iml
+*.DS_Store
+
+# Credentials and environment secrets
+.env
+*.json
+!pom.xml
