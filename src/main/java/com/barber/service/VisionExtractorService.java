@@ -1,6 +1,7 @@
 package com.barber.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.File;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -10,6 +11,12 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.net.http.HttpClient;
+
+import com.barber.model.Client;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class VisionExtractorService {
     private static final String GEMINI_URL =
@@ -27,6 +34,32 @@ public class VisionExtractorService {
         this.objectMapper = new ObjectMapper();
 
     }
+
+    public Client extractClientFromImage(File imageFile) throws Exception {
+        String rawResponse = sendImageToGemini(imageFile);
+
+        JsonNode rootNode = objectMapper.readTree(rawResponse);
+        String extractedJsonText = rootNode
+                .path("candidates").get(0)
+                .path("content")
+                .path("parts").get(0)
+                .path("text").asText();
+
+        JsonNode clientNode = objectMapper.readTree(extractedJsonText);
+
+        String name = clientNode.path("name").isNull() ? "Unknown" : clientNode.path("name").asText();
+        String phone = clientNode.path("phone").isNull() ? "" : clientNode.path("phone").asText();
+        String email = clientNode.path("email").isNull() ? "" : clientNode.path("email").asText();
+
+        LocalDateTime appointmentTime = null;
+        String timeStr = clientNode.path("appointmentTime").asText("");
+        if (!clientNode.path("appointmentTime").isNull() && !timeStr.isBlank()) {
+            appointmentTime = LocalDateTime.parse(timeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        return new Client(name, email, phone, appointmentTime);
+    }
+
     private String sendImageToGemini(File imageFile) throws Exception {
         byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
         String base64Image = Base64.getEncoder().encodeToString(imageBytes);
