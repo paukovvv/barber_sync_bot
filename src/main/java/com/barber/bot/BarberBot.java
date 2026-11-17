@@ -1,5 +1,6 @@
 package com.barber.bot;
 
+import com.barber.service.GoogleSheetsService;
 import com.barber.model.Client;
 import com.barber.service.VisionExtractorService;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -14,10 +15,12 @@ import java.util.Comparator;
 import java.util.List;
 
 public class BarberBot extends TelegramLongPollingBot {
+
     private final String botToken;
     private final String botUsername;
     private final long allowedChatId;
     private final VisionExtractorService visionService;
+    private final GoogleSheetsService sheetsService;
 
     public BarberBot() {
         this.botToken = System.getenv("BOT_TOKEN");
@@ -30,6 +33,7 @@ public class BarberBot extends TelegramLongPollingBot {
             System.err.println("WARNING: ALLOWED_CHAT_ID is not configured!");
         }
         this.visionService = new VisionExtractorService();
+        this.sheetsService = new GoogleSheetsService();
     }
 
     @Override
@@ -63,6 +67,7 @@ public class BarberBot extends TelegramLongPollingBot {
 
                 Client client = visionService.extractClientFromImage(downloadedFile);
                 downloadedFile.delete();
+                sheetsService.saveClient(client);
 
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
                 String formattedTime = client.getAppointmentTime() != null
@@ -70,7 +75,7 @@ public class BarberBot extends TelegramLongPollingBot {
                         : "Не вказано";
 
                 String replyText = String.format(
-                        "✅ Розпізнано запис:\n" +
+                        "✅ Розпізнано та збережено в таблицю:\n" +
                                 "👤 Ім'я: %s\n" +
                                 "📞 Телефон: %s\n" +
                                 "📧 Email: %s\n" +
